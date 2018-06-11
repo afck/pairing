@@ -1,3 +1,4 @@
+use std::ops;
 use LegendreSymbol::*;
 use {Field, PrimeField, PrimeFieldDecodingError, PrimeFieldRepr, SqrtField};
 
@@ -321,6 +322,17 @@ impl PrimeField for Fr {
     }
 }
 
+impl<'a> ops::AddAssign<&'a Self> for Fr {
+    #[inline]
+    fn add_assign(&mut self, other: &'a Fr) {
+        // This cannot exceed the backing capacity.
+        self.0.add_nocarry(&other.0);
+
+        // However, it may need to be reduced.
+        self.reduce();
+    }
+}
+
 impl Field for Fr {
     #[inline]
     fn zero() -> Self {
@@ -335,15 +347,6 @@ impl Field for Fr {
     #[inline]
     fn is_zero(&self) -> bool {
         self.0.is_zero()
-    }
-
-    #[inline]
-    fn add_assign(&mut self, other: &Fr) {
-        // This cannot exceed the backing capacity.
-        self.0.add_nocarry(&other.0);
-
-        // However, it may need to be reduced.
-        self.reduce();
     }
 
     #[inline]
@@ -1049,7 +1052,7 @@ fn test_fr_add_assign() {
         ]));
         assert!(tmp.is_valid());
         // Test that adding zero has no effect.
-        tmp.add_assign(&Fr(FrRepr::from(0)));
+        tmp += &Fr(FrRepr::from(0));
         assert_eq!(
             tmp,
             Fr(FrRepr([
@@ -1060,7 +1063,7 @@ fn test_fr_add_assign() {
             ]))
         );
         // Add one and test for the result.
-        tmp.add_assign(&Fr(FrRepr::from(1)));
+        tmp += &Fr(FrRepr::from(1));
         assert_eq!(
             tmp,
             Fr(FrRepr([
@@ -1071,12 +1074,12 @@ fn test_fr_add_assign() {
             ]))
         );
         // Add another random number that exercises the reduction.
-        tmp.add_assign(&Fr(FrRepr([
+        tmp += &Fr(FrRepr([
             0x946f435944f7dc79,
             0xb55e7ee6533a9b9b,
             0x1e43b84c2f6194ca,
             0x58717ab525463496,
-        ])));
+        ]));
         assert_eq!(
             tmp,
             Fr(FrRepr([
@@ -1093,7 +1096,7 @@ fn test_fr_add_assign() {
             0x3339d80809a1d805,
             0x73eda753299d7d48,
         ]));
-        tmp.add_assign(&Fr(FrRepr::from(1)));
+        tmp += &Fr(FrRepr::from(1));
         assert!(tmp.0.is_zero());
         // Add a random number to another one such that the result is r - 1
         tmp = Fr(FrRepr([
@@ -1102,12 +1105,12 @@ fn test_fr_add_assign() {
             0x2550f4704ae39086,
             0x591d1902e7c5ba27,
         ]));
-        tmp.add_assign(&Fr(FrRepr([
+        tmp += &Fr(FrRepr([
             0x521a525223349e70,
             0xa99bb5f3d8231f31,
             0xde8e397bebe477e,
             0x1ad08e5041d7c321,
-        ])));
+        ]));
         assert_eq!(
             tmp,
             Fr(FrRepr([
@@ -1118,7 +1121,7 @@ fn test_fr_add_assign() {
             ]))
         );
         // Add one to the result and test for it.
-        tmp.add_assign(&Fr(FrRepr::from(1)));
+        tmp += &Fr(FrRepr::from(1));
         assert!(tmp.0.is_zero());
     }
 
@@ -1133,12 +1136,12 @@ fn test_fr_add_assign() {
         let c = Fr::rand(&mut rng);
 
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
-        tmp1.add_assign(&c);
+        tmp1 += &b;
+        tmp1 += &c;
 
         let mut tmp2 = b;
-        tmp2.add_assign(&c);
-        tmp2.add_assign(&a);
+        tmp2 += &c;
+        tmp2 += &a;
 
         assert!(tmp1.is_valid());
         assert!(tmp2.is_valid());
@@ -1231,7 +1234,7 @@ fn test_fr_sub_assign() {
         let mut tmp2 = b;
         tmp2.sub_assign(&a);
 
-        tmp1.add_assign(&tmp2);
+        tmp1 += &tmp2;
         assert!(tmp1.is_zero());
     }
 }
@@ -1287,16 +1290,16 @@ fn test_fr_mul_assign() {
         let mut c = Fr::rand(&mut rng);
 
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
-        tmp1.add_assign(&c);
+        tmp1 += &b;
+        tmp1 += &c;
         tmp1.mul_assign(&r);
 
         a.mul_assign(&r);
         b.mul_assign(&r);
         c.mul_assign(&r);
 
-        a.add_assign(&b);
-        a.add_assign(&c);
+        a += &b;
+        a += &c;
 
         assert_eq!(tmp1, a);
     }
@@ -1363,7 +1366,7 @@ fn test_fr_double() {
         // Ensure doubling a is equivalent to adding a to itself.
         let mut a = Fr::rand(&mut rng);
         let mut b = a;
-        b.add_assign(&a);
+        b += &a;
         a.double();
         assert_eq!(a, b);
     }
@@ -1385,7 +1388,7 @@ fn test_fr_negate() {
         let mut a = Fr::rand(&mut rng);
         let mut b = a;
         b.negate();
-        a.add_assign(&b);
+        a += &b;
 
         assert!(a.is_zero());
     }

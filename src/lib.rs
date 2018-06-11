@@ -25,8 +25,8 @@ mod wnaf;
 pub use self::wnaf::Wnaf;
 
 use std::error::Error;
-use std::fmt;
 use std::io::{self, Read, Write};
+use std::{fmt, ops};
 
 /// An "engine" is a collection of types (fields, elliptic curve groups, etc.)
 /// with well-defined relationships. In particular, the G1/G2 curve groups are
@@ -121,6 +121,7 @@ pub trait CurveProjective:
     + Sync
     + fmt::Debug
     + fmt::Display
+    + for<'r> ops::AddAssign<&'r Self>
     + rand::Rand
     + 'static
 {
@@ -148,9 +149,6 @@ pub trait CurveProjective:
 
     /// Doubles this element.
     fn double(&mut self);
-
-    /// Adds another element to this element.
-    fn add_assign(&mut self, other: &Self);
 
     /// Subtracts another element from this element.
     fn sub_assign(&mut self, other: &Self) {
@@ -265,7 +263,17 @@ pub trait EncodedPoint:
 
 /// This trait represents an element of a field.
 pub trait Field:
-    Sized + Eq + Copy + Clone + Send + Sync + fmt::Debug + fmt::Display + 'static + rand::Rand
+    Sized
+    + Eq
+    + Copy
+    + Clone
+    + Send
+    + Sync
+    + fmt::Debug
+    + fmt::Display
+    + for<'r> ops::AddAssign<&'r Self>
+    + 'static
+    + rand::Rand
 {
     /// Returns the zero element of the field, the additive identity.
     fn zero() -> Self;
@@ -284,9 +292,6 @@ pub trait Field:
 
     /// Negates this element.
     fn negate(&mut self);
-
-    /// Adds another element to this element.
-    fn add_assign(&mut self, other: &Self);
 
     /// Subtracts another element from this element.
     fn sub_assign(&mut self, other: &Self);

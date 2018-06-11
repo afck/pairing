@@ -1,5 +1,6 @@
 use super::fq2::Fq2;
 use std::cmp::Ordering;
+use std::ops;
 use {Field, PrimeField, PrimeFieldDecodingError, PrimeFieldRepr, SqrtField};
 
 // q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
@@ -793,6 +794,17 @@ impl PrimeField for Fq {
     }
 }
 
+impl<'a> ops::AddAssign<&'a Self> for Fq {
+    #[inline]
+    fn add_assign(&mut self, other: &Fq) {
+        // This cannot exceed the backing capacity.
+        self.0.add_nocarry(&other.0);
+
+        // However, it may need to be reduced.
+        self.reduce();
+    }
+}
+
 impl Field for Fq {
     #[inline]
     fn zero() -> Self {
@@ -807,15 +819,6 @@ impl Field for Fq {
     #[inline]
     fn is_zero(&self) -> bool {
         self.0.is_zero()
-    }
-
-    #[inline]
-    fn add_assign(&mut self, other: &Fq) {
-        // This cannot exceed the backing capacity.
-        self.0.add_nocarry(&other.0);
-
-        // However, it may need to be reduced.
-        self.reduce();
     }
 
     #[inline]
@@ -2335,7 +2338,7 @@ fn test_fq_add_assign() {
         ]));
         assert!(tmp.is_valid());
         // Test that adding zero has no effect.
-        tmp.add_assign(&Fq(FqRepr::from(0)));
+        tmp += &Fq(FqRepr::from(0));
         assert_eq!(
             tmp,
             Fq(FqRepr([
@@ -2348,7 +2351,7 @@ fn test_fq_add_assign() {
             ]))
         );
         // Add one and test for the result.
-        tmp.add_assign(&Fq(FqRepr::from(1)));
+        tmp += &Fq(FqRepr::from(1));
         assert_eq!(
             tmp,
             Fq(FqRepr([
@@ -2361,14 +2364,14 @@ fn test_fq_add_assign() {
             ]))
         );
         // Add another random number that exercises the reduction.
-        tmp.add_assign(&Fq(FqRepr([
+        tmp += &Fq(FqRepr([
             0x374d8f8ea7a648d8,
             0xe318bb0ebb8bfa9b,
             0x613d996f0a95b400,
             0x9fac233cb7e4fef1,
             0x67e47552d253c52,
             0x5c31b227edf25da,
-        ])));
+        ]));
         assert_eq!(
             tmp,
             Fq(FqRepr([
@@ -2389,7 +2392,7 @@ fn test_fq_add_assign() {
             0x4b1ba7b6434bacd7,
             0x1a0111ea397fe69a,
         ]));
-        tmp.add_assign(&Fq(FqRepr::from(1)));
+        tmp += &Fq(FqRepr::from(1));
         assert!(tmp.0.is_zero());
         // Add a random number to another one such that the result is q - 1
         tmp = Fq(FqRepr([
@@ -2400,14 +2403,14 @@ fn test_fq_add_assign() {
             0xdc35c51158644588,
             0xb2d176c04f2100,
         ]));
-        tmp.add_assign(&Fq(FqRepr([
+        tmp += &Fq(FqRepr([
             0x66ecde5bef0fe14f,
             0xac2a6cf8aed568e8,
             0x861d70d86483edd,
             0xcc98f1b7839a22e8,
             0x6ee5e2a4eae7674e,
             0x194e40737930c599,
-        ])));
+        ]));
         assert_eq!(
             tmp,
             Fq(FqRepr([
@@ -2420,7 +2423,7 @@ fn test_fq_add_assign() {
             ]))
         );
         // Add one to the result and test for it.
-        tmp.add_assign(&Fq(FqRepr::from(1)));
+        tmp += &Fq(FqRepr::from(1));
         assert!(tmp.0.is_zero());
     }
 
@@ -2435,12 +2438,12 @@ fn test_fq_add_assign() {
         let c = Fq::rand(&mut rng);
 
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
-        tmp1.add_assign(&c);
+        tmp1 += &b;
+        tmp1 += &c;
 
         let mut tmp2 = b;
-        tmp2.add_assign(&c);
-        tmp2.add_assign(&a);
+        tmp2 += &c;
+        tmp2 += &a;
 
         assert!(tmp1.is_valid());
         assert!(tmp2.is_valid());
@@ -2549,7 +2552,7 @@ fn test_fq_sub_assign() {
         let mut tmp2 = b;
         tmp2.sub_assign(&a);
 
-        tmp1.add_assign(&tmp2);
+        tmp1 += &tmp2;
         assert!(tmp1.is_zero());
     }
 }
@@ -2611,16 +2614,16 @@ fn test_fq_mul_assign() {
         let mut c = Fq::rand(&mut rng);
 
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
-        tmp1.add_assign(&c);
+        tmp1 += &b;
+        tmp1 += &c;
         tmp1.mul_assign(&r);
 
         a.mul_assign(&r);
         b.mul_assign(&r);
         c.mul_assign(&r);
 
-        a.add_assign(&b);
-        a.add_assign(&c);
+        a += &b;
+        a += &c;
 
         assert_eq!(tmp1, a);
     }
@@ -2691,7 +2694,7 @@ fn test_fq_double() {
         // Ensure doubling a is equivalent to adding a to itself.
         let mut a = Fq::rand(&mut rng);
         let mut b = a;
-        b.add_assign(&a);
+        b += &a;
         a.double();
         assert_eq!(a, b);
     }
@@ -2713,7 +2716,7 @@ fn test_fq_negate() {
         let mut a = Fq::rand(&mut rng);
         let mut b = a;
         b.negate();
-        a.add_assign(&b);
+        a += &b;
 
         assert!(a.is_zero());
     }

@@ -2,6 +2,7 @@ use super::fq::FROBENIUS_COEFF_FQ12_C1;
 use super::fq2::Fq2;
 use super::fq6::Fq6;
 use rand::{Rand, Rng};
+use std::ops;
 use Field;
 
 /// An element of Fq12, represented by c0 + c1 * w.
@@ -37,14 +38,21 @@ impl Fq12 {
         let mut bb = self.c1;
         bb.mul_by_1(c4);
         let mut o = *c1;
-        o.add_assign(c4);
-        self.c1.add_assign(&self.c0);
+        o += c4;
+        self.c1 += &self.c0;
         self.c1.mul_by_01(c0, &o);
         self.c1.sub_assign(&aa);
         self.c1.sub_assign(&bb);
         self.c0 = bb;
         self.c0.mul_by_nonresidue();
-        self.c0.add_assign(&aa);
+        self.c0 += &aa;
+    }
+}
+
+impl<'a> ops::AddAssign<&'a Self> for Fq12 {
+    fn add_assign(&mut self, other: &Self) {
+        self.c0 += &other.c0;
+        self.c1 += &other.c1;
     }
 }
 
@@ -77,11 +85,6 @@ impl Field for Fq12 {
         self.c1.negate();
     }
 
-    fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
-    }
-
     fn sub_assign(&mut self, other: &Self) {
         self.c0.sub_assign(&other.c0);
         self.c1.sub_assign(&other.c1);
@@ -100,14 +103,14 @@ impl Field for Fq12 {
         let mut ab = self.c0;
         ab.mul_assign(&self.c1);
         let mut c0c1 = self.c0;
-        c0c1.add_assign(&self.c1);
+        c0c1 += &self.c1;
         let mut c0 = self.c1;
         c0.mul_by_nonresidue();
-        c0.add_assign(&self.c0);
+        c0 += &self.c0;
         c0.mul_assign(&c0c1);
         c0.sub_assign(&ab);
         self.c1 = ab;
-        self.c1.add_assign(&ab);
+        self.c1 += &ab;
         ab.mul_by_nonresidue();
         c0.sub_assign(&ab);
         self.c0 = c0;
@@ -119,14 +122,14 @@ impl Field for Fq12 {
         let mut bb = self.c1;
         bb.mul_assign(&other.c1);
         let mut o = other.c0;
-        o.add_assign(&other.c1);
-        self.c1.add_assign(&self.c0);
+        o += &other.c1;
+        self.c1 += &self.c0;
         self.c1.mul_assign(&o);
         self.c1.sub_assign(&aa);
         self.c1.sub_assign(&bb);
         self.c0 = bb;
         self.c0.mul_by_nonresidue();
-        self.c0.add_assign(&aa);
+        self.c0 += &aa;
     }
 
     fn inverse(&self) -> Option<Self> {

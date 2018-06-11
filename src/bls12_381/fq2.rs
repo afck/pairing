@@ -1,5 +1,6 @@
 use super::fq::{FROBENIUS_COEFF_FQ2_C1, Fq, NEGATIVE_ONE};
 use rand::{Rand, Rng};
+use std::ops;
 use {Field, SqrtField};
 
 use std::cmp::Ordering;
@@ -41,7 +42,7 @@ impl Fq2 {
     pub fn mul_by_nonresidue(&mut self) {
         let t0 = self.c0;
         self.c0.sub_assign(&self.c1);
-        self.c1.add_assign(&t0);
+        self.c1 += &t0;
     }
 
     /// Norm of Fq2 as extension field in i over Fq
@@ -50,7 +51,7 @@ impl Fq2 {
         let mut t1 = self.c1;
         t0.square();
         t1.square();
-        t1.add_assign(&t0);
+        t1 += &t0;
 
         t1
     }
@@ -62,6 +63,13 @@ impl Rand for Fq2 {
             c0: rng.gen(),
             c1: rng.gen(),
         }
+    }
+}
+
+impl<'a> ops::AddAssign<&'a Self> for Fq2 {
+    fn add_assign(&mut self, other: &'a Self) {
+        self.c0 += &other.c0;
+        self.c1 += &other.c1;
     }
 }
 
@@ -88,15 +96,15 @@ impl Field for Fq2 {
         let mut ab = self.c0;
         ab.mul_assign(&self.c1);
         let mut c0c1 = self.c0;
-        c0c1.add_assign(&self.c1);
+        c0c1 += &self.c1;
         let mut c0 = self.c1;
         c0.negate();
-        c0.add_assign(&self.c0);
+        c0 += &self.c0;
         c0.mul_assign(&c0c1);
         c0.sub_assign(&ab);
         self.c1 = ab;
-        self.c1.add_assign(&ab);
-        c0.add_assign(&ab);
+        self.c1 += &ab;
+        c0 += &ab;
         self.c0 = c0;
     }
 
@@ -110,11 +118,6 @@ impl Field for Fq2 {
         self.c1.negate();
     }
 
-    fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
-    }
-
     fn sub_assign(&mut self, other: &Self) {
         self.c0.sub_assign(&other.c0);
         self.c1.sub_assign(&other.c1);
@@ -126,8 +129,8 @@ impl Field for Fq2 {
         let mut bb = self.c1;
         bb.mul_assign(&other.c1);
         let mut o = other.c0;
-        o.add_assign(&other.c1);
-        self.c1.add_assign(&self.c0);
+        o += &other.c1;
+        self.c1 += &self.c0;
         self.c1.mul_assign(&o);
         self.c1.sub_assign(&aa);
         self.c1.sub_assign(&bb);
@@ -140,7 +143,7 @@ impl Field for Fq2 {
         t1.square();
         let mut t0 = self.c0;
         t0.square();
-        t0.add_assign(&t1);
+        t0 += &t1;
         t0.inverse().map(|t| {
             let mut tmp = Fq2 {
                 c0: self.c0,
@@ -202,7 +205,7 @@ impl SqrtField for Fq2 {
                         c1: Fq::one(),
                     });
                 } else {
-                    alpha.add_assign(&Fq2::one());
+                    alpha += &Fq2::one();
                     // alpha = alpha^((q - 1) / 2)
                     alpha = alpha.pow([
                         0xdcff7fffffffd555,
@@ -231,17 +234,17 @@ fn test_fq2_ordering() {
     let mut b = a.clone();
 
     assert!(a.cmp(&b) == Ordering::Equal);
-    b.c0.add_assign(&Fq::one());
+    b.c0 += &Fq::one();
     assert!(a.cmp(&b) == Ordering::Less);
-    a.c0.add_assign(&Fq::one());
+    a.c0 += &Fq::one();
     assert!(a.cmp(&b) == Ordering::Equal);
-    b.c1.add_assign(&Fq::one());
+    b.c1 += &Fq::one();
     assert!(a.cmp(&b) == Ordering::Less);
-    a.c0.add_assign(&Fq::one());
+    a.c0 += &Fq::one();
     assert!(a.cmp(&b) == Ordering::Less);
-    a.c1.add_assign(&Fq::one());
+    a.c1 += &Fq::one();
     assert!(a.cmp(&b) == Ordering::Greater);
-    b.c0.add_assign(&Fq::one());
+    b.c0 += &Fq::one();
     assert!(a.cmp(&b) == Ordering::Equal);
 }
 
@@ -479,7 +482,7 @@ fn test_fq2_addition() {
             0x12d1137b8a6a837,
         ])).unwrap(),
     };
-    a.add_assign(&Fq2 {
+    a += &Fq2 {
         c0: Fq::from_repr(FqRepr([
             0x619a02d78dc70ef2,
             0xb93adfc9119e33e8,
@@ -496,7 +499,7 @@ fn test_fq2_addition() {
             0x4c8c1800eb104566,
             0x11d6e20e986c2085,
         ])).unwrap(),
-    });
+    };
     assert_eq!(
         a,
         Fq2 {
